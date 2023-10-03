@@ -9,6 +9,9 @@ import { ElementTypes, MessageTypes } from "../enums/enums";
 
 import {
 	BOOLEAN,
+	ARRAY,
+	OBJECT,
+	FUNCTION,
 	OBJECT_EXPRESSION,
 	STRING,
 	NUMBER,
@@ -1729,6 +1732,87 @@ export default class ObjectsService {
 		}
 
 		console.dir(res);
+		return res;
+	}
+
+	objectWithVariousTypes(code: string): ProgramResponse {
+		const response = this.baseChecks(code, "myObject", OBJECT_EXPRESSION_WITH_LABEL);
+
+		if (response instanceof ProgramResponse) {
+			return response;
+		}
+
+		const {
+			res,
+			program,
+			declaration: { init }
+		} = response;
+
+		try {
+			traverse(program, {
+				enter(node: TSESTree.Node) {
+					switch (node.type) {
+						case AST_NODE_TYPES.VariableDeclaration:
+							if (init.type === OBJECT_EXPRESSION) {
+								const requiredTypes = [STRING, NUMBER, BOOLEAN, ARRAY, OBJECT, FUNCTION, null];
+								const seenTypes = [];
+
+								init.properties.forEach((property: any) => {
+									switch (property.value.type) {
+										case LITERAL:
+											if (typeof property.value.value === STRING) {
+												seenTypes.push(STRING);
+											} else if (typeof property.value.value === NUMBER) {
+												seenTypes.push(NUMBER);
+											} else if (typeof property.value.value === BOOLEAN) {
+												seenTypes.push(BOOLEAN);
+											} else if (property.value.value === null) {
+												seenTypes.push(null);
+											}
+											break;
+										case AST_NODE_TYPES.ArrayExpression:
+											seenTypes.push(ARRAY);
+											break;
+										case AST_NODE_TYPES.FunctionExpression:
+										case AST_NODE_TYPES.ArrowFunctionExpression:
+											seenTypes.push(FUNCTION);
+											break;
+										case OBJECT_EXPRESSION:
+											seenTypes.push(OBJECT);
+											break;
+									}
+								});
+
+								const missingTypes = requiredTypes.filter((type) => !seenTypes.includes(type));
+
+								if (missingTypes.length !== 0) {
+									let errorMessage;
+
+									if (missingTypes.length === 1) {
+										errorMessage = `The object is missing a property with the type: ${missingTypes[0]}`;
+									} else {
+										errorMessage = `The object is missing properties with the following types: ${missingTypes.join(
+											", "
+										)}`;
+									}
+
+									res.messages.push({
+										type: MessageTypes.Error,
+										message: errorMessage
+									});
+									break;
+								}
+							}
+							break;
+					}
+				}
+			});
+		} catch (error) {
+			res.missingElements = [];
+			const message = createErrorMessage(error);
+			res.messages.push(message);
+		}
+
 		return res;
 	}
 }
