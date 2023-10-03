@@ -1754,7 +1754,7 @@ export default class ObjectsService {
 					switch (node.type) {
 						case AST_NODE_TYPES.VariableDeclaration:
 							if (init.type === OBJECT_EXPRESSION) {
-								const requiredTypes = [STRING, NUMBER, BOOLEAN, ARRAY, OBJECT, FUNCTION, null];
+								const requiredTypes = [STRING, NUMBER, BOOLEAN, ARRAY, OBJECT, FUNCTION, "null"];
 								const seenTypes = [];
 
 								init.properties.forEach((property: any) => {
@@ -1767,7 +1767,7 @@ export default class ObjectsService {
 											} else if (typeof property.value.value === BOOLEAN) {
 												seenTypes.push(BOOLEAN);
 											} else if (property.value.value === null) {
-												seenTypes.push(null);
+												seenTypes.push("null");
 											}
 											break;
 										case AST_NODE_TYPES.ArrayExpression:
